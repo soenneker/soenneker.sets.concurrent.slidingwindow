@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <Platforms>AnyCPU</Platforms>
+        <NoWarn>$(NoWarn);1591</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Description>A high-throughput, thread-safe set whose bucketed entries automatically expire after a fixed time window.</Description>
+        <Version Condition="'$(BUILD_VERSION)' == ''">4.0.0</Version>
+        <Version Condition="'$(BUILD_VERSION)' != ''">$(BUILD_VERSION)</Version>
+        <AssemblyName>Soenneker.Sets.Concurrent.SlidingWindow</AssemblyName>
+        <PackageId>Soenneker.Sets.Concurrent.SlidingWindow</PackageId>
+        <PackageTags>sets concurrent slidingwindow threadsafe concurrency auto-expire de-dupe dedupe set slidingwindowconcurrentset object csharp dotnet c# .net</PackageTags>
+        <Copyright>Copyright © 2026 Jake Soenneker</Copyright>
+        <Authors>Jake Soenneker</Authors>
+        <Company>https://soenneker.com</Company>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <IsPackable>true</IsPackable>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/soenneker/soenneker.sets.concurrent.slidingwindow</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/soenneker/soenneker.sets.concurrent.slidingwindow</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryBranch>main</RepositoryBranch>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <LangVersion>latest</LangVersion>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\README.md" Pack="true" PackagePath="\" />
+        <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+        <None Include="..\icon.png" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Soenneker.Atomics.ValueBools" Version="4.0.10" />
+      <PackageReference Include="Soenneker.Extensions.Task" Version="4.0.111" />
+      <PackageReference Include="Soenneker.Extensions.ValueTask" Version="4.0.104" />
+    </ItemGroup>
+</Project>
