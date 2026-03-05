@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Soenneker.Atomics.Longs;
 using Soenneker.Atomics.ValueBools;
 using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
@@ -11,7 +12,7 @@ using Soenneker.Sets.Concurrent.SlidingWindow.Abstract;
 
 namespace Soenneker.Sets.Concurrent.SlidingWindow;
 
-///<inheritdoc cref="ISlidingWindowConcurrentSet{T}"/>
+/// <inheritdoc cref="ISlidingWindowConcurrentSet{T}"/>
 public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<T> where T : notnull
 {
     private readonly ConcurrentDictionary<T, long> _index;
@@ -21,7 +22,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
     private readonly PeriodicTimer _timer;
     private readonly CancellationTokenSource _cts = new();
 
-    private long _currentBucketId;
+    private AtomicLong _currentBucketId;
     private readonly Task _pump;
 
     private ValueAtomicBool _disposed;
@@ -39,7 +40,6 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
             _bucketCount = 2;
 
         _buckets = new ConcurrentQueue<T>[_bucketCount];
-
         for (var i = 0; i < _bucketCount; i++)
             _buckets[i] = new ConcurrentQueue<T>();
 
@@ -61,29 +61,35 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
     {
         ThrowIfDisposed();
 
-        long currentId = Volatile.Read(ref _currentBucketId);
-        var existed = true;
+        long currentId = _currentBucketId.Read();
 
-        long observed = _index.AddOrUpdate(value, _ =>
+        bool existed = true;
+        bool shouldEnqueue = false;
+
+        _index.AddOrUpdate(
+            value,
+            _ =>
+            {
+                existed = false;
+                shouldEnqueue = true;
+                return currentId;
+            },
+            (_, prev) =>
+            {
+                existed = true;
+
+                // Already touched in this same slice -> don't enqueue again.
+                if (prev == currentId)
+                    return prev;
+
+                shouldEnqueue = true;
+                return currentId;
+            });
+
+        if (shouldEnqueue)
         {
-            existed = false;
-            return currentId;
-        }, (_, prev) =>
-        {
-            existed = true;
-
-            // Already touched in this same slice -> don't enqueue again.
-            if (prev == currentId)
-                return prev;
-
-            return currentId;
-        });
-
-        if (observed == currentId)
-        {
-            var slot = (int)(currentId % _bucketCount);
-            _buckets[slot]
-                .Enqueue(value);
+            int slot = (int)(currentId % _bucketCount);
+            _buckets[slot].Enqueue(value);
         }
 
         return !existed;
@@ -96,7 +102,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         if (!_index.TryGetValue(value, out long lastId))
             return false;
 
-        long currentId = Volatile.Read(ref _currentBucketId);
+        long currentId = _currentBucketId.Read();
         return (currentId - lastId) < _bucketCount;
     }
 
@@ -112,8 +118,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
     {
         try
         {
-            while (await _timer.WaitForNextTickAsync(_cts.Token)
-                               .NoSync())
+            while (await _timer.WaitForNextTickAsync(_cts.Token).NoSync())
             {
                 Rotate();
             }
@@ -126,15 +131,19 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
 
     private void Rotate()
     {
-        long expiredId = Interlocked.Increment(ref _currentBucketId);
-        var slot = (int)(expiredId % _bucketCount);
+        // Move to the next slice id (this is the *current* slice id after the increment)
+        long current = _currentBucketId.Increment();
+
+        // This slot is being reused; it corresponds to the slice that fell out of the window.
+        long expiring = current - _bucketCount;
+        int slot = (int)(current % _bucketCount);
 
         ConcurrentQueue<T> queue = _buckets[slot];
 
         while (queue.TryDequeue(out T? value))
         {
-            // Only remove if it still points to this expired slice.
-            if (_index.TryGetValue(value, out long lastId) && lastId == expiredId)
+            // Only remove if it still points to the expiring slice.
+            if (_index.TryGetValue(value, out long lastId) && lastId == expiring)
                 _index.TryRemove(value, out _);
         }
 
@@ -163,8 +172,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         if (!_disposed.TrySetTrue())
             return;
 
-        await _cts.CancelAsync()
-                  .NoSync();
+        await _cts.CancelAsync().NoSync();
         _timer.Dispose();
 
         try
