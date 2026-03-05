@@ -63,8 +63,8 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
 
         long currentId = _currentBucketId.Read();
 
-        bool existed = true;
-        bool shouldEnqueue = false;
+        var existed = true;
+        var shouldEnqueue = false;
 
         _index.AddOrUpdate(
             value,
@@ -88,7 +88,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
 
         if (shouldEnqueue)
         {
-            int slot = (int)(currentId % _bucketCount);
+            var slot = (int)(currentId % _bucketCount);
             _buckets[slot].Enqueue(value);
         }
 
@@ -136,7 +136,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
 
         // This slot is being reused; it corresponds to the slice that fell out of the window.
         long expiring = current - _bucketCount;
-        int slot = (int)(current % _bucketCount);
+        var slot = (int)(current % _bucketCount);
 
         ConcurrentQueue<T> queue = _buckets[slot];
 
