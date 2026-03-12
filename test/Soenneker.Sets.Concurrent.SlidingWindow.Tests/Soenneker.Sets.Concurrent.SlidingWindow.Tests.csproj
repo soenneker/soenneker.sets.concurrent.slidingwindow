@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Soenneker.Sets.Concurrent.SlidingWindow.csproj" />
+        <ProjectReference Include="..\..\src\Soenneker.Sets.Concurrent.SlidingWindow\Soenneker.Sets.Concurrent.SlidingWindow.csproj" />
     </ItemGroup>
 
     <ItemGroup>
