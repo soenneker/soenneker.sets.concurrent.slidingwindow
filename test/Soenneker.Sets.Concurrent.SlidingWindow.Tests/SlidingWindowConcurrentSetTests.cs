@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using AwesomeAssertions;
 using Soenneker.Tests.Unit;
-using Xunit;
 
 namespace Soenneker.Sets.Concurrent.SlidingWindow.Tests;
 
@@ -17,35 +16,35 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
             rotationInterval ?? TimeSpan.FromSeconds(1));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_ThrowsOnZeroWindow()
     {
         Func<SlidingWindowConcurrentSet<int>> act = () => new SlidingWindowConcurrentSet<int>(TimeSpan.Zero, TimeSpan.FromSeconds(1));
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    [Fact]
+    [Test]
     public void Constructor_ThrowsOnNegativeWindow()
     {
         Func<SlidingWindowConcurrentSet<int>> act = () => new SlidingWindowConcurrentSet<int>(TimeSpan.FromSeconds(-1), TimeSpan.FromSeconds(1));
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    [Fact]
+    [Test]
     public void Constructor_ThrowsOnZeroRotationInterval()
     {
         Func<SlidingWindowConcurrentSet<int>> act = () => new SlidingWindowConcurrentSet<int>(TimeSpan.FromSeconds(10), TimeSpan.Zero);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    [Fact]
+    [Test]
     public void Constructor_ThrowsOnNegativeRotationInterval()
     {
         Func<SlidingWindowConcurrentSet<int>> act = () => new SlidingWindowConcurrentSet<int>(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(-1));
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    [Fact]
+    [Test]
     public void TryAdd_AddsNewItem_ReturnsTrue()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -54,7 +53,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Count.Should().Be(1);
     }
 
-    [Fact]
+    [Test]
     public void TryAdd_SameItem_ReturnsFalse()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -63,7 +62,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Count.Should().Be(1);
     }
 
-    [Fact]
+    [Test]
     public void TryAdd_MultipleDistinctItems_AllAdded()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -76,14 +75,14 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Contains(3).Should().BeTrue();
     }
 
-    [Fact]
+    [Test]
     public void Contains_ReturnsFalse_WhenNotAdded()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
         set.Contains(99).Should().BeFalse();
     }
 
-    [Fact]
+    [Test]
     public void Contains_ReturnsFalse_AfterRemove()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -93,7 +92,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Count.Should().Be(0);
     }
 
-    [Fact]
+    [Test]
     public void TryRemove_RemovesItem_ReturnsTrue()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -103,14 +102,14 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Count.Should().Be(0);
     }
 
-    [Fact]
+    [Test]
     public void TryRemove_NotPresent_ReturnsFalse()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
         set.TryRemove(99).Should().BeFalse();
     }
 
-    [Fact]
+    [Test]
     public void Count_ReflectsAddsAndRemoves()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -125,7 +124,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Count.Should().Be(0);
     }
 
-    [Fact]
+    [Test]
     public void ToArray_ReturnsCurrentValues()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -136,7 +135,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         arr.Should().HaveCount(3).And.Contain(1).And.Contain(2).And.Contain(3);
     }
 
-    [Fact]
+    [Test]
     public void ToArray_EmptySet_ReturnsEmptyArray()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -144,7 +143,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         arr.Should().BeEmpty();
     }
 
-    [Fact]
+    [Test]
     public void Values_EnumeratesCurrentItems()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -154,7 +153,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         values.Should().HaveCount(2).And.Contain(10).And.Contain(20);
     }
 
-    [Fact]
+    [Test]
     public void Dispose_ThrowsOnTryAdd()
     {
         SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -163,7 +162,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         act.Should().Throw<ObjectDisposedException>();
     }
 
-    [Fact]
+    [Test]
     public void Dispose_ThrowsOnContains()
     {
         SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -172,7 +171,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         act.Should().Throw<ObjectDisposedException>();
     }
 
-    [Fact]
+    [Test]
     public void Dispose_ThrowsOnTryRemove()
     {
         SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -181,7 +180,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         act.Should().Throw<ObjectDisposedException>();
     }
 
-    [Fact]
+    [Test]
     public async Task DisposeAsync_ThrowsOnSubsequentUse()
     {
         SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -190,7 +189,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         act.Should().Throw<ObjectDisposedException>();
     }
 
-    [Fact]
+    [Test]
     public void Dispose_Idempotent()
     {
         SlidingWindowConcurrentSet<int> set = CreateSet<int>();
@@ -198,7 +197,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Dispose(); // should not throw
     }
 
-    [Fact]
+    [Test]
     public void Constructor_WithCustomComparer_RespectsComparer()
     {
         StringComparer comparer = StringComparer.OrdinalIgnoreCase;
@@ -209,7 +208,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Count.Should().Be(1);
     }
 
-    [Fact]
+    [Test]
     public void Constructor_WithCapacityHint_AcceptsPositiveHint()
     {
         using var set = new SlidingWindowConcurrentSet<int>(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(1), capacityHint: 100);
@@ -217,7 +216,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.Count.Should().Be(1);
     }
 
-    [Fact]
+    [Test]
     public async Task Item_ExpiresAfterWindow()
     {
         TimeSpan window = TimeSpan.FromMilliseconds(100);
@@ -231,7 +230,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         // Count may lag behind Contains until rotation runs; item is no longer in the window
     }
 
-    [Fact]
+    [Test]
     public void Concurrent_Adds_CountConsistent()
     {
         using SlidingWindowConcurrentSet<int> set = CreateSet<int>();
