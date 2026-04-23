@@ -225,7 +225,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.TryAdd(42);
         set.Contains(42).Should().BeTrue();
 
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await Task.Delay(300, System.Threading.CancellationToken.None);
         set.Contains(42).Should().BeFalse();
         // Count may lag behind Contains until rotation runs; item is no longer in the window
     }
@@ -243,3 +243,4 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
             set.Contains(v).Should().BeTrue();
     }
 }
+

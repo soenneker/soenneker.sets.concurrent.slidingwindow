@@ -44,9 +44,16 @@
     </ItemGroup>
 
     <ItemGroup>
+<<<<<<< HEAD
         <PackageReference Include="Soenneker.Atomics.Longs" Version="4.0.13" />
         <PackageReference Include="Soenneker.Atomics.ValueBools" Version="4.0.23" />
         <PackageReference Include="Soenneker.Extensions.Task" Version="4.0.120" />
         <PackageReference Include="Soenneker.Extensions.ValueTask" Version="4.0.113" />
+=======
+      <PackageReference Include="Soenneker.Atomics.Longs" Version="4.0.15" />
+      <PackageReference Include="Soenneker.Atomics.ValueBools" Version="4.0.26" />
+      <PackageReference Include="Soenneker.Extensions.Task" Version="4.0.121" />
+      <PackageReference Include="Soenneker.Extensions.ValueTask" Version="4.0.113" />
+>>>>>>> af93a45f97c7a7b01f5fdb34dc8ee692f3a0a6f8
     </ItemGroup>
 </Project>
