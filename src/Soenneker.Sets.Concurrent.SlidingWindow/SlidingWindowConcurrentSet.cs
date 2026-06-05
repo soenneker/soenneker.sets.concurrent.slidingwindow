@@ -157,6 +157,9 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
             throw new ObjectDisposedException(nameof(SlidingWindowConcurrentSet<T>));
     }
 
+    /// <summary>
+    /// Releases resources used by the current instance.
+    /// </summary>
     public void Dispose()
     {
         if (!_disposed.TrySetTrue())
@@ -167,6 +170,10 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         _cts.Dispose();
     }
 
+    /// <summary>
+    /// Asynchronously releases resources used by the current instance.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public async ValueTask DisposeAsync()
     {
         if (!_disposed.TrySetTrue())
