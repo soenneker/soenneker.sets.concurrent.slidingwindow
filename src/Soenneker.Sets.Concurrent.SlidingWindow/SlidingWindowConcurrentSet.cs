@@ -62,37 +62,32 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         ThrowIfDisposed();
 
         long currentId = _currentBucketId.Read();
+        bool added;
 
-        var existed = true;
-        var shouldEnqueue = false;
-
-        _index.AddOrUpdate(
-            value,
-            _ =>
-            {
-                existed = false;
-                shouldEnqueue = true;
-                return currentId;
-            },
-            (_, prev) =>
-            {
-                existed = true;
-
-                // Already touched in this same slice -> don't enqueue again.
-                if (prev == currentId)
-                    return prev;
-
-                shouldEnqueue = true;
-                return currentId;
-            });
-
-        if (shouldEnqueue)
+        while (true)
         {
-            var slot = (int)(currentId % _bucketCount);
-            _buckets[slot].Enqueue(value);
+            if (_index.TryGetValue(value, out long previousId))
+            {
+                if (previousId == currentId)
+                    return false;
+
+                if (!_index.TryUpdate(value, currentId, previousId))
+                    continue;
+
+                added = false;
+                break;
+            }
+
+            if (!_index.TryAdd(value, currentId))
+                continue;
+
+            added = true;
+            break;
         }
 
-        return !existed;
+        var slot = (int)(currentId % _bucketCount);
+        _buckets[slot].Enqueue(value);
+        return added;
     }
 
     public bool Contains(T value)
@@ -146,9 +141,6 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
             if (_index.TryGetValue(value, out long lastId) && lastId == expiring)
                 _index.TryRemove(value, out _);
         }
-
-        // Drop internal segments quickly
-        _buckets[slot] = new ConcurrentQueue<T>();
     }
 
     private void ThrowIfDisposed()
