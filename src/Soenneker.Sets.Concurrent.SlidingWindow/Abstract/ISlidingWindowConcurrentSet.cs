@@ -24,21 +24,28 @@ public interface ISlidingWindowConcurrentSet<T> : IAsyncDisposable, IDisposable 
     /// Attempts to add <paramref name="value"/> to the set.
     /// Returns <c>true</c> if it was newly added; <c>false</c> if it was already present (within the current window).
     /// </summary>
+    /// <param name="value">Value to test, add, or remove from the set.</param>
+    /// <returns>true if the requested update was applied; otherwise, false.</returns>
     bool TryAdd(T value);
 
     /// <summary>
     /// Determines whether <paramref name="value"/> is present in the set (within the current window).
     /// </summary>
+    /// <param name="value">Value to test, add, or remove from the set.</param>
+    /// <returns>true if is present in the set (within the current window); otherwise, false.</returns>
     bool Contains(T value);
 
     /// <summary>
     /// Attempts to remove <paramref name="value"/> from the set.
     /// Returns <c>true</c> if removed; <c>false</c> if it was not present.
     /// </summary>
+    /// <param name="value">Value to test, add, or remove from the set.</param>
+    /// <returns>true if the requested update was applied; otherwise, false.</returns>
     bool TryRemove(T value);
 
     /// <summary>
     /// Creates a point-in-time snapshot of the current values as a new array (allocates).
     /// </summary>
+    /// <returns>The newly created t[].</returns>
     T[] ToArray();
 }
