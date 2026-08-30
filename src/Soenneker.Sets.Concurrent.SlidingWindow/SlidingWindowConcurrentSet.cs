@@ -139,7 +139,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         {
             // Only remove if it still points to the expiring slice.
             if (_index.TryGetValue(value, out long lastId) && lastId == expiring)
-                _index.TryRemove(value, out _);
+                _index.TryRemove(new KeyValuePair<T, long>(value, lastId));
         }
     }
 

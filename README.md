@@ -3,185 +3,64 @@
 [![](https://img.shields.io/nuget/dt/soenneker.sets.concurrent.slidingwindow.svg?style=for-the-badge)](https://www.nuget.org/packages/soenneker.sets.concurrent.slidingwindow/)
 [![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.sets.concurrent.slidingwindow/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/soenneker/soenneker.sets.concurrent.slidingwindow/actions/workflows/codeql.yml)
 
-# ![](https://user-images.githubusercontent.com/4441470/224455560-91ed3ee7-f510-4041-a8d2-3fc093025112.png) Soenneker.Sets.Concurrent.SlidingWindow
+# Soenneker.Sets.Concurrent.SlidingWindow
 
-### A high-throughput, thread-safe set whose bucketed entries automatically expire after a fixed time window.
+A concurrent set that refreshes values into time buckets and expires them with one internal periodic rotation task.
 
-`Soenneker.Sets.Concurrent.SlidingWindow` provides a **concurrent sliding-window set** for .NET.
-Items added to the set automatically expire after a configurable time window without requiring manual cleanup.
-
-The implementation is optimized for **high-concurrency workloads** and avoids expensive per-item timers by using a **bucketed time-slice rotation system**.
-
-This makes it ideal for **deduplication, rate limiting, and recent activity tracking**.
-
----
-
-# Installation
+## Installation
 
 ```bash
 dotnet add package Soenneker.Sets.Concurrent.SlidingWindow
 ```
 
----
-
-# Why this library exists
-
-Many systems need to track items that should only exist for a **limited period of time**, such as:
-
-* recently processed messages
-* request IDs
-* phone numbers
-* event IDs
-* authentication tokens
-
-Traditional options have downsides:
-
-| Approach                 | Problem                                    |
-| ------------------------ | ------------------------------------------ |
-| `ConcurrentDictionary`   | Requires manual expiration                 |
-| `MemoryCache`            | Heavy and feature-rich for simple tracking |
-| Per-item timers          | Extremely expensive at scale               |
-| Background cleanup scans | High CPU cost                              |
-
-`SlidingWindowConcurrentSet` solves this by using **bucketed time slices** where items automatically expire when their time window passes.
-
----
-
-# Key Features
-
-✔ High-throughput concurrent operations
-
-✔ Automatic expiration of entries
-
-✔ Sliding window time-based retention
-
-✔ Lock-minimized design
-
-✔ Low allocation footprint
-
-✔ No per-item timers
-
-✔ Safe for heavy multi-threaded workloads
-
----
-
-# Example
+## Usage
 
 ```csharp
 using Soenneker.Sets.Concurrent.SlidingWindow;
 
-var set = new SlidingWindowConcurrentSet<string>(
+await using var recentIds = new SlidingWindowConcurrentSet<string>(
     window: TimeSpan.FromMinutes(5),
-    rotationInterval: TimeSpan.FromSeconds(30)
-);
+    rotationInterval: TimeSpan.FromSeconds(30),
+    capacityHint: 10_000,
+    comparer: StringComparer.Ordinal);
 
-set.TryAdd("alpha");
+if (!recentIds.TryAdd(messageId))
+{
+    // The ID was already present. This call may also refresh its bucket.
+    return;
+}
 
-bool exists = set.Contains("alpha");
-
-await Task.Delay(TimeSpan.FromMinutes(6));
-
-bool expired = set.Contains("alpha"); // false
+bool isRecent = recentIds.Contains(messageId);
+bool removed = recentIds.TryRemove(messageId);
+string[] snapshot = recentIds.ToArray();
 ```
 
----
+`TryAdd` returns `true` only when the value was absent from the dictionary. If the value is already present from an earlier bucket, it returns `false` and refreshes that value into the current bucket. Repeated add attempts can therefore extend retention even though they report a duplicate. A duplicate within the same bucket returns `false` without adding another bucket record.
 
-# Configuration
+## Expiration precision
+
+The constructor creates `max(2, ceil(window / rotationInterval))` buckets. Entries expire when their last bucket rotates out, so expiration is quantized rather than exact.
+
+With a five-minute window and a 30-second rotation interval, an unrefreshed entry normally remains for roughly 4.5 to 5 minutes depending on where within the current slice it was added. Timer scheduling delays can extend that further. When `rotationInterval` is greater than or equal to `window`, the two-bucket minimum means retention is roughly one to two rotation intervals.
+
+Choose an interval small enough for the expiration precision your use case needs, while remembering that every interval runs a bucket cleanup pass.
+
+## Collection views
+
+`Contains` checks both the dictionary and the recorded bucket age. `Count`, `Values`, and `ToArray` read the underlying concurrent dictionary. At a rotation boundary—or if the timer pump is delayed—they can briefly include an entry that `Contains` already considers expired.
+
+`Values` is a live concurrent view and may change during enumeration. `ToArray` allocates a snapshot of keys observed during that call. None of these operations provides a transaction with concurrent adds, refreshes, removals, or expiration.
+
+`capacityHint` controls only the dictionary's initial capacity. It does not bound the number of live values or queued bucket records. Frequently refreshing values creates stale bucket records that remain until their buckets rotate.
+
+## Disposal
+
+Each set owns a `PeriodicTimer`, cancellation source, and rotation task. Prefer asynchronous disposal when practical because it cancels and awaits the pump:
 
 ```csharp
-var set = new SlidingWindowConcurrentSet<string>(
-    window: TimeSpan.FromMinutes(10),
-    rotationInterval: TimeSpan.FromSeconds(15)
-);
+await recentIds.DisposeAsync();
 ```
 
-| Parameter          | Description                                       |
-| ------------------ | ------------------------------------------------- |
-| `window`           | Total time items remain valid                     |
-| `rotationInterval` | Time slice size used for bucket rotation          |
-| `capacityHint`     | Initial capacity hint for the internal dictionary |
-| `comparer`         | Optional equality comparer                        |
+`Dispose` and `DisposeAsync` are idempotent. After disposal, `TryAdd`, `Contains`, and `TryRemove` throw `ObjectDisposedException`.
 
-The window is internally divided into **time buckets**:
-
-```
-window / rotationInterval = number of buckets
-```
-
-Example:
-
-```
-window = 5 minutes
-rotationInterval = 30 seconds
-bucket count = 10
-```
-
-Each rotation advances the window and expires the oldest bucket.
-
----
-
-# How it works
-
-The set maintains:
-
-* a **ConcurrentDictionary** for fast lookup
-* a **ring buffer of queues** representing time buckets
-
-When an item is added:
-
-1. It is assigned the **current time bucket**
-2. The value is queued in that bucket
-3. The dictionary records the bucket index
-
-A background rotation process periodically:
-
-1. Advances the active bucket
-2. Processes the expired bucket
-3. Removes items whose last activity falls outside the sliding window
-
-This avoids scanning the entire collection.
-
----
-
-# Performance Characteristics
-
-| Operation   | Complexity                             |
-| ----------- | -------------------------------------- |
-| `TryAdd`    | O(1)                                   |
-| `Contains`  | O(1)                                   |
-| `TryRemove` | O(1)                                   |
-| Expiration  | O(n) only for items in expiring bucket |
-
-The design ensures:
-
-* predictable memory usage
-* minimal locking
-* bounded cleanup work
-
----
-
-# Thread Safety
-
-All operations are **thread-safe**.
-
-The set is designed for **high-concurrency environments** and does not require external synchronization.
-
----
-
-# Disposal
-
-The set uses an internal **rotation task** driven by `PeriodicTimer`.
-
-When the set is no longer needed, it should be disposed:
-
-```csharp
-set.Dispose();
-```
-
-or
-
-```csharp
-await set.DisposeAsync();
-```
-
-This stops the internal rotation loop.
+This collection is suitable for approximate recent-value tracking and deduplication hints. It is not a durable idempotency store, exact rate limiter, security token revocation list, or TTL cache with per-entry expiration guarantees.

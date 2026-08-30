@@ -4,13 +4,13 @@ using System.Collections.Generic;
 namespace Soenneker.Sets.Concurrent.SlidingWindow.Abstract;
 
 /// <summary>
-/// Represents a high-throughput, thread-safe set whose entries automatically expire after a fixed time window.
+/// Represents a thread-safe, bucketed set whose entries expire after an approximate sliding window.
 /// </summary>
 /// <typeparam name="T">The element type. Must be non-nullable.</typeparam>
 public interface ISlidingWindowConcurrentSet<T> : IAsyncDisposable, IDisposable where T : notnull
 {
     /// <summary>
-    /// Gets the number of elements currently present in the set.
+    /// Gets the underlying dictionary count. During rotation it can briefly include entries that <see cref="Contains"/> considers expired.
     /// </summary>
     int Count { get; }
 
@@ -21,11 +21,10 @@ public interface ISlidingWindowConcurrentSet<T> : IAsyncDisposable, IDisposable 
     IEnumerable<T> Values { get; }
 
     /// <summary>
-    /// Attempts to add <paramref name="value"/> to the set.
-    /// Returns <c>true</c> if it was newly added; <c>false</c> if it was already present (within the current window).
+    /// Attempts to add <paramref name="value"/> to the set. An existing value from an older bucket is refreshed into the current bucket.
     /// </summary>
     /// <param name="value">Value to test, add, or remove from the set.</param>
-    /// <returns>true if the requested update was applied; otherwise, false.</returns>
+    /// <returns><see langword="true"/> if the value was absent; <see langword="false"/> if it already existed, including when its bucket was refreshed.</returns>
     bool TryAdd(T value);
 
     /// <summary>
