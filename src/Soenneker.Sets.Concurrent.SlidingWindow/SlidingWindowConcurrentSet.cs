@@ -16,7 +16,7 @@ namespace Soenneker.Sets.Concurrent.SlidingWindow;
 public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<T> where T : notnull
 {
     private readonly ConcurrentDictionary<T, long> _index;
-    private readonly ConcurrentQueue<T>[] _buckets;
+    private readonly ConcurrentQueue<T>?[] _buckets;
 
     private readonly int _bucketCount;
     private readonly PeriodicTimer _timer;
@@ -39,9 +39,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         if (_bucketCount < 2)
             _bucketCount = 2;
 
-        _buckets = new ConcurrentQueue<T>[_bucketCount];
-        for (var i = 0; i < _bucketCount; i++)
-            _buckets[i] = new ConcurrentQueue<T>();
+        _buckets = new ConcurrentQueue<T>?[_bucketCount];
 
         int concurrencyLevel = Math.Max(2, Environment.ProcessorCount);
 
@@ -50,7 +48,7 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
             : new ConcurrentDictionary<T, long>(concurrencyLevel, 31, comparer);
 
         _timer = new PeriodicTimer(rotationInterval);
-        _pump = Task.Run(Pump);
+        _pump = Pump();
     }
 
     public int Count => _index.Count;
@@ -86,7 +84,14 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         }
 
         var slot = (int)(currentId % _bucketCount);
-        _buckets[slot].Enqueue(value);
+        ConcurrentQueue<T>? bucket = Volatile.Read(ref _buckets[slot]);
+        if (bucket is null)
+        {
+            var created = new ConcurrentQueue<T>();
+            bucket = Interlocked.CompareExchange(ref _buckets[slot], created, null) ?? created;
+        }
+
+        bucket.Enqueue(value);
         return added;
     }
 
@@ -133,7 +138,9 @@ public sealed class SlidingWindowConcurrentSet<T> : ISlidingWindowConcurrentSet<
         long expiring = current - _bucketCount;
         var slot = (int)(current % _bucketCount);
 
-        ConcurrentQueue<T> queue = _buckets[slot];
+        ConcurrentQueue<T>? queue = Volatile.Read(ref _buckets[slot]);
+        if (queue is null)
+            return;
 
         while (queue.TryDequeue(out T? value))
         {
