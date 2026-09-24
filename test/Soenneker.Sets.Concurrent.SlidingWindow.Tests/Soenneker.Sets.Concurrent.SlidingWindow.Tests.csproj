@@ -14,5 +14,8 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\Soenneker.Sets.Concurrent.SlidingWindow\Soenneker.Sets.Concurrent.SlidingWindow.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="AwesomeAssertions" Version="9.6.0" />
+    </ItemGroup>
 </Project>
 
