@@ -181,7 +181,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
     }
 
     [Test]
-    public async Task DisposeAsync_ThrowsOnSubsequentUse()
+    public async ValueTask DisposeAsync_ThrowsOnSubsequentUse()
     {
         SlidingWindowConcurrentSet<int> set = CreateSet<int>();
         await set.DisposeAsync();
@@ -217,7 +217,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
     }
 
     [Test]
-    public async Task Item_ExpiresAfterWindow()
+    public async ValueTask Item_ExpiresAfterWindow()
     {
         TimeSpan window = TimeSpan.FromMilliseconds(100);
         TimeSpan rotation = TimeSpan.FromMilliseconds(50);
