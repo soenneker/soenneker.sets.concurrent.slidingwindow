@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AwesomeAssertions;
 using Soenneker.Tests.Unit;
+using System.Threading;
 
 namespace Soenneker.Sets.Concurrent.SlidingWindow.Tests;
 
@@ -181,7 +182,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
     }
 
     [Test]
-    public async ValueTask DisposeAsync_ThrowsOnSubsequentUse()
+    public async ValueTask DisposeAsync_ThrowsOnSubsequentUse(CancellationToken cancellationToken)
     {
         SlidingWindowConcurrentSet<int> set = CreateSet<int>();
         await set.DisposeAsync();
@@ -217,7 +218,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
     }
 
     [Test]
-    public async ValueTask Item_ExpiresAfterWindow()
+    public async ValueTask Item_ExpiresAfterWindow(CancellationToken cancellationToken)
     {
         TimeSpan window = TimeSpan.FromMilliseconds(100);
         TimeSpan rotation = TimeSpan.FromMilliseconds(50);
@@ -225,7 +226,7 @@ public sealed class SlidingWindowConcurrentSetTests : UnitTest
         set.TryAdd(42);
         set.Contains(42).Should().BeTrue();
 
-        await Task.Delay(300, System.Threading.CancellationToken.None);
+        await Task.Delay(300, cancellationToken);
         set.Contains(42).Should().BeFalse();
         // Count may lag behind Contains until rotation runs; item is no longer in the window
     }
